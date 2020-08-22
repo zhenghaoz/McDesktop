@@ -1,0 +1,25 @@
+
+name: build
+
+on:
+  push:
+    branches:    
+      - master
+  pull_request:
+    branches:    
+      - master
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2
+
+    - name: Run CMake
+      uses: lukka/run-cmake@v2.5
