@@ -17,9 +17,14 @@ jobs:
     steps:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v2
+
+    - name: Install Boost
+      run: sudo apt-get install libboost-all-dev
 
     - name: Run CMake
       uses: lukka/run-cmake@v2.5

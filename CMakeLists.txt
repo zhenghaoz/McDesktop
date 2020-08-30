@@ -55,5 +55,6 @@ add_executable(ddesktop
 target_include_directories(ddesktop PRIVATE src/PlistCpp/src)
 target_include_directories(ddesktop PRIVATE src/SolTrack)
 target_include_directories(ddesktop PRIVATE third_party/cpp-httplib)
+target_include_directories(ddesktop PRIVATE third_party/libheif)
 
 target_link_libraries(ddesktop PRIVATE Qt5::Widgets Qt5::Xml heif pthread SolTrack PlistCpp)
