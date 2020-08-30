@@ -1,8 +1,14 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QDesktopServices>
 #include <QDesktopWidget>
+#include <QDir>
+#include <QFileDialog>
+#include <QUrl>
 #include <QVBoxLayout>
+
+#include "wallpaper.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
@@ -54,15 +60,18 @@ MainWindow::MainWindow(QWidget *parent)
     addButton = new QPushButton();
     addButton->setIcon(QIcon(QPixmap("../assets/add.png")));
     addButton->setFixedSize(32, 32);
+    connect(addButton, &QPushButton::clicked, this, &MainWindow::AddWallpaper);
     bottomLayout->addWidget(addButton);
     deleteButton = new QPushButton();
     deleteButton->setIcon(QIcon(QPixmap("../assets/delete.png")));
     deleteButton->setFixedSize(32, 32);
+    connect(deleteButton, &QPushButton::clicked, this, &MainWindow::RemoveWallpaper);
     bottomLayout->addWidget(deleteButton);
     bottomLayout->addStretch();
     githubButton = new QPushButton();
     githubButton->setIcon(QIcon(QPixmap("../assets/github.png")));
     githubButton->setFixedSize(32, 32);
+    connect(githubButton, &QPushButton::clicked, this, &MainWindow::OpenGitHub);
     bottomLayout->addWidget(githubButton);
 
     MoveCenter();
@@ -75,10 +84,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::LoadGallery()
 {
-    for (int i = 0; i < 10; i++) {
+    QDir directory("../images/");
+    wallpapers = directory.entryList(QStringList() << "*.heic" << "*.HEIC", QDir::Files);
+    foreach(QString wallpaper, wallpapers) {
+        auto a = Heic::Load("../images/" + wallpaper.toStdString());
+        for (const QImage& image : a.images) {
         QListWidgetItem *item = new QListWidgetItem();
-        item->setIcon(QIcon(QPixmap("../images/sample.jpeg")));
+        item->setIcon(QIcon(QPixmap::fromImage(image)));
         galleryList->addItem(item);
+        }
     }
 }
 
@@ -87,4 +101,19 @@ void MainWindow::MoveCenter()
     QRect desktopRect = QApplication::desktop()->availableGeometry(this);
     QPoint center = desktopRect.center();
     move(center.x() - width() * 0.5, center.y() - height() * 0.5);
+}
+
+void MainWindow::OpenGitHub()
+{
+    QDesktopServices::openUrl(QUrl(QString("https://github.com/zhenghaoz/dynamic-desktop")));
+}
+
+void MainWindow::AddWallpaper()
+{
+    QString file1Name = QFileDialog::getOpenFileName(this, tr("Open XML File 1"), "/home", tr("XML Files (*.xml)"));
+}
+
+void MainWindow::RemoveWallpaper()
+{
+
 }
