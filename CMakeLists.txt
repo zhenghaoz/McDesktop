@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(ddesktop LANGUAGES CXX)
+project(sundesktop LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -17,9 +17,9 @@ find_package(Boost REQUIRED)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libheif/cmake/modules")
 
-# libheif
-
 add_subdirectory(third_party/libheif)
+add_subdirectory(third_party/spdlog)
+add_subdirectory(third_party/googletest)
 
 # SolTrack
 
@@ -42,19 +42,25 @@ add_library(PlistCpp STATIC
   src/PlistCpp/src/PlistDate.cpp
 )
 
-add_executable(ddesktop
+add_executable(sundesktop
   src/main.cpp
   src/mainwindow.cpp
   src/mainwindow.h
-  src/wallpaper.cpp
-  src/wallpaper.h
+  src/heic.cpp
+  src/heic.h
   src/engine.cpp
   src/engine.h
+  src/cache.cpp
+  src/cache.h
+  src/exception.cpp
+  src/exception.h
+  src/parser.cpp
+  src/parser.h
 )
 
-target_include_directories(ddesktop PRIVATE src/PlistCpp/src)
-target_include_directories(ddesktop PRIVATE src/SolTrack)
-target_include_directories(ddesktop PRIVATE third_party/cpp-httplib)
-target_include_directories(ddesktop PRIVATE third_party/libheif)
+target_include_directories(sundesktop PRIVATE src/PlistCpp/src)
+target_include_directories(sundesktop PRIVATE src/SolTrack)
+target_include_directories(sundesktop PRIVATE third_party/cpp-httplib)
+target_include_directories(sundesktop PRIVATE third_party/spdlog/spdlog)
 
-target_link_libraries(ddesktop PRIVATE Qt5::Widgets Qt5::Xml heif pthread SolTrack PlistCpp)
+target_link_libraries(sundesktop PRIVATE Qt5::Widgets Qt5::Xml heif pthread SolTrack PlistCpp spdlog::spdlog)

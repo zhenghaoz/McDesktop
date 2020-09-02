@@ -8,7 +8,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-#include "wallpaper.h"
+#include <spdlog/spdlog.h>
+#include "heic.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
@@ -52,6 +53,7 @@ MainWindow::MainWindow(QWidget *parent)
     galleryList->setIconSize(QSize(180, 180));
     galleryList->setSpacing(2);
     galleryList->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    connect(galleryList, &QListWidget::itemClicked, this, &MainWindow::SelectPicture);
     baseLayout->addWidget(galleryList);
 
     // Bottom
@@ -84,15 +86,11 @@ MainWindow::~MainWindow()
 
 void MainWindow::LoadGallery()
 {
-    QDir directory("../images/");
-    wallpapers = directory.entryList(QStringList() << "*.heic" << "*.HEIC", QDir::Files);
-    foreach(QString wallpaper, wallpapers) {
-        auto a = Heic::Load("../images/" + wallpaper.toStdString());
-        for (const QImage& image : a.images) {
+    pictures = cache.ListCachedPictures();
+    for(const CachedPicture picture : pictures) {
         QListWidgetItem *item = new QListWidgetItem();
-        item->setIcon(QIcon(QPixmap::fromImage(image)));
+        item->setIcon(QIcon(picture.cover));
         galleryList->addItem(item);
-        }
     }
 }
 
@@ -116,4 +114,14 @@ void MainWindow::AddWallpaper()
 void MainWindow::RemoveWallpaper()
 {
 
+}
+
+void MainWindow::SelectPicture(QListWidgetItem* item)
+{
+    const QModelIndexList indices = galleryList->selectionModel()->selectedIndexes();
+    const QModelIndex index = indices.front();
+    selected = index.row();
+    spdlog::info("picture {} selected", selected);
+
+    nameLabel->setText(pictures[selected].name);
 }

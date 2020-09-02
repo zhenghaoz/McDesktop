@@ -23,7 +23,7 @@ Engine::~Engine()
 void Engine::MainLoop()
 {
     while (!isTerminated) {
-        chrono::seconds timespan(10);
+        chrono::seconds timespan(60);
         this_thread::sleep_for(timespan);
 
         double lat = 0, lon = 0;

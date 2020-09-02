@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "cache.h"
 #include "engine.h"
 
 #include <QComboBox>
@@ -20,6 +21,9 @@ class MainWindow : public QWidget
     QStringList wallpapers;
 
     Engine engine;
+    Cache cache;
+    QVector<CachedPicture> pictures;
+    int selected = 0;
 
 public:
     MainWindow(QWidget *parent = nullptr);
@@ -30,5 +34,6 @@ public:
     void AddWallpaper();
     void RemoveWallpaper();
     void OpenGitHub();
+    void SelectPicture(QListWidgetItem* item);
 };
 #endif // MAINWINDOW_H
