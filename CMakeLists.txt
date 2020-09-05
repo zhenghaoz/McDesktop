@@ -48,8 +48,6 @@ add_executable(sundesktop
   src/mainwindow.h
   src/heic.cpp
   src/heic.h
-  src/engine.cpp
-  src/engine.h
   src/cache.cpp
   src/cache.h
   src/exception.cpp
@@ -61,6 +59,7 @@ add_executable(sundesktop
 target_include_directories(sundesktop PRIVATE src/PlistCpp/src)
 target_include_directories(sundesktop PRIVATE src/SolTrack)
 target_include_directories(sundesktop PRIVATE third_party/cpp-httplib)
+target_include_directories(sundesktop PRIVATE third_party/libheif)
 target_include_directories(sundesktop PRIVATE third_party/spdlog/spdlog)
 
 target_link_libraries(sundesktop PRIVATE Qt5::Widgets Qt5::Xml heif pthread SolTrack PlistCpp spdlog::spdlog)

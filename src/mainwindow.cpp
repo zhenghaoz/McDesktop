@@ -7,9 +7,12 @@
 #include <QFileDialog>
 #include <QUrl>
 #include <QVBoxLayout>
-
+#include <QTimer>
+#include <chrono>
 #include <spdlog/spdlog.h>
 #include "heic.h"
+
+using namespace std;
 
 MainWindow::MainWindow(QWidget *parent)
     : QWidget(parent)
@@ -76,6 +79,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(githubButton, &QPushButton::clicked, this, &MainWindow::OpenGitHub);
     bottomLayout->addWidget(githubButton);
 
+    // Preview timer
+    QTimer *previewTimer = new QTimer(this);
+    connect(previewTimer, &QTimer::timeout, this, &MainWindow::PlayPreview);
+    previewTimer->start(1000);
+
     MoveCenter();
     LoadGallery();
 }
@@ -120,8 +128,43 @@ void MainWindow::SelectPicture(QListWidgetItem* item)
 {
     const QModelIndexList indices = galleryList->selectionModel()->selectedIndexes();
     const QModelIndex index = indices.front();
+    play = 0;
     selected = index.row();
     spdlog::info("picture {} selected", selected);
 
     nameLabel->setText(pictures[selected].name);
+
+    auto currentTime = chrono::system_clock::now();
+    time_t tt = chrono::system_clock::to_time_t(currentTime);
+    tm local_tm = *gmtime(&tt);
+    spdlog::info("H {}", local_tm.tm_hour);
+    Time time;
+    time.year = local_tm.tm_year + 1900;
+    time.month = local_tm.tm_mon + 1;
+    time.day = local_tm.tm_mday;
+    time.hour = play;
+    time.minute = local_tm.tm_min;
+    time.second = local_tm.tm_sec;
+    const CachedFrame& frame = pictures[selected].GetFrame(cache.GetCachedLocation(), time);
+    imageLabel->setPixmap(frame.thumb.scaled(200, 200, Qt::KeepAspectRatio));
+}
+
+void MainWindow::PlayPreview()
+{
+    if (selected >= 0) {
+        play = (play + 1) % 24;
+        auto currentTime = chrono::system_clock::now();
+        time_t tt = chrono::system_clock::to_time_t(currentTime);
+        tm local_tm = *gmtime(&tt);
+        spdlog::info("H {}", local_tm.tm_hour);
+        Time time;
+        time.year = local_tm.tm_year + 1900;
+        time.month = local_tm.tm_mon + 1;
+        time.day = local_tm.tm_mday;
+        time.hour = play;
+        time.minute = local_tm.tm_min;
+        time.second = local_tm.tm_sec;
+        const CachedFrame& frame = pictures[selected].GetFrame(cache.GetCachedLocation(), time);
+        imageLabel->setPixmap(frame.thumb.scaled(200, 200, Qt::KeepAspectRatio));
+    }
 }

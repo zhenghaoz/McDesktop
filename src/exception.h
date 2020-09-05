@@ -12,7 +12,9 @@ public:
     enum {
         ParseConfigurationError,
         ParseHEICError,
-        OpenFileError
+        OpenFileError,
+        NetworkError,
+        ParseJSONError
     };
 };
 

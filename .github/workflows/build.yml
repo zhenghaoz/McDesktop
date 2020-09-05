@@ -27,4 +27,4 @@ jobs:
       run: sudo apt-get install libboost-all-dev
 
     - name: Run CMake
-      uses: lukka/run-cmake@v2.5
+      uses: ashutoshvarma/action-cmake-build@master

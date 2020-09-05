@@ -6,6 +6,13 @@
 #include <QImage>
 #include <QVector>
 #include <QPixmap>
+#include <SolTrack.h>
+
+struct CachedLocation
+{
+    double longitude;
+    double latitude;
+};
 
 struct CachedFrame
 {
@@ -13,6 +20,7 @@ struct CachedFrame
     QString path;
     double altitude;
     double azimuth;
+    double GetDistance(const CachedLocation& location, const Time& tm) const;
 };
 
 struct CachedPicture
@@ -22,21 +30,29 @@ struct CachedPicture
     CachedFrame lightFrame;
     CachedFrame darkFrame;
     QVector<CachedFrame> frames;
+
+    CachedFrame GetFrame(const CachedLocation& location) const;
+    CachedFrame GetFrame(const CachedLocation& location, const Time& tm) const;
 };
 
 class Cache
 {
+    static constexpr int kLocationCacheLease = 1;
+
     QString mHomePath;
     std::thread mSyncThread;
+    std::thread pictureSyncThread;
     bool mIsTerminated = false;
 
-    QString GetCacheLocation() const;
-    QString GetPictureLocation() const;
+    QString GetCacheDir() const;
+    QString GetPictureDir() const;
     QVector<QString> ListPictures() const;
-    QVector<QString> ListCaches() const;
-    void Sync() const;
+    QVector<QString> ListPictureCaches() const;
+    void SyncPictureCache() const;
+    void SyncLocationCache() const;
 public:
     QVector<CachedPicture> ListCachedPictures() const;
+    CachedLocation GetCachedLocation() const;
     Cache();
     ~Cache();
 };
