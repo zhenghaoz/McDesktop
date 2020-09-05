@@ -16,7 +16,7 @@ The build process requires:
 
 ```bash
 # Install dependencies
-sudo apt-get install qt5-default libboost-all-dev
+sudo apt-get install qt5-default qttools5-dev libboost-all-dev
 
 # Clone repo
 git clone https://github.com/zhenghaoz/sundesktop.git
