@@ -140,7 +140,10 @@ void Cache::SyncPictureCache() const
     while (!mIsTerminated) {
         // List caches
         const QVector<QString> caches = ListPictureCaches();
-        QSet<QString> cacheSet(caches.begin(), caches.end());
+        QSet<QString> cacheSet;
+        for (const QString& cache : caches) {
+            cacheSet.insert(cache);
+        }
 
         // List pictures
         const QVector<QString> pictures = ListPictures();

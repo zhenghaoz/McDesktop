@@ -61,5 +61,6 @@ target_include_directories(sundesktop PRIVATE src/SolTrack)
 target_include_directories(sundesktop PRIVATE third_party/cpp-httplib)
 target_include_directories(sundesktop PRIVATE third_party/libheif)
 target_include_directories(sundesktop PRIVATE third_party/spdlog/spdlog)
+target_include_directories(sundesktop PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/libheif)
 
 target_link_libraries(sundesktop PRIVATE Qt5::Widgets Qt5::Xml heif pthread SolTrack PlistCpp spdlog::spdlog)
