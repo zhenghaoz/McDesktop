@@ -2,8 +2,8 @@
 
 | Platform | Build Status |
 |-|-|
-| Linux | ![build](https://github.com/zhenghaoz/dynamic-desktop/workflows/build/badge.svg?branch=master) |
-| Windows | ![build](https://github.com/zhenghaoz/dynamic-desktop/workflows/build/badge.svg?branch=master) |
+| Linux | ![Linux](https://github.com/zhenghaoz/sundesktop/workflows/Linux/badge.svg?branch=master) |
+| Windows | ![Windows](https://github.com/zhenghaoz/sundesktop/workflows/Windows/badge.svg?branch=master) |
 
 SunDesktop is a solar-aware dynamic wallpaper engine.
 
@@ -31,6 +31,20 @@ cmake .. && make -j 4
 ```
 
 ### Windows
+
+```bash
+# Install Qt
+
+# Install Boost
+
+# Create build folder
+cd sundesktop
+mkdir build
+cd build
+
+# Build
+cmake .. && cmake --build . --parallel 4
+```
 
 ## Usage
 

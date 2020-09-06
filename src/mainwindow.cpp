@@ -19,7 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     // Main window properties
     setFixedSize(QSize(800, 600));
-    setWindowTitle("动态桌面");
+    setWindowTitle("SunDesktop");
 
     // Create base layout
     QVBoxLayout *baseLayout = new QVBoxLayout();
@@ -36,16 +36,16 @@ MainWindow::MainWindow(QWidget *parent)
     previewLayout->addWidget(imageLabel);
     QVBoxLayout *optionLayout = new QVBoxLayout();
     optionLayout->setContentsMargins(32, 10, 10, 10);
-    nameLabel = new QLabel("卡特琳娜岛");
+    nameLabel = new QLabel("Catalina");
     optionLayout->addWidget(nameLabel);
     modeComboBox = new QComboBox();
     QStringList options;
-    options.append("动态");
-    options.append("动态");
-    options.append("动态");
+    options.append("Dynamic");
+    options.append("Light");
+    options.append("Dark");
     modeComboBox->addItems(options);
     optionLayout->addWidget(modeComboBox);
-    hintLabel = new QLabel("此桌面图片会基于你的位置不断更改");
+    hintLabel = new QLabel("");
     optionLayout->addWidget(hintLabel);
     previewLayout->addLayout(optionLayout);
     previewLayout->addStretch();

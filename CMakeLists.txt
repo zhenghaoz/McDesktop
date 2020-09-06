@@ -14,6 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt5 COMPONENTS Widgets LinguistTools REQUIRED)
 find_package(Qt5Xml REQUIRED)
 find_package(Boost REQUIRED)
+find_package(Threads REQUIRED)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party/libheif/cmake/modules")
 
@@ -62,5 +63,8 @@ target_include_directories(sundesktop PRIVATE third_party/cpp-httplib)
 target_include_directories(sundesktop PRIVATE third_party/libheif)
 target_include_directories(sundesktop PRIVATE third_party/spdlog/spdlog)
 target_include_directories(sundesktop PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/third_party/libheif)
+target_include_directories(sundesktop PRIVATE ${Boost_INCLUDE_DIRS})
 
-target_link_libraries(sundesktop PRIVATE Qt5::Widgets Qt5::Xml heif pthread SolTrack PlistCpp spdlog::spdlog)
+target_include_directories(PlistCpp PRIVATE ${Boost_INCLUDE_DIRS})
+
+target_link_libraries(sundesktop PRIVATE Qt5::Widgets Qt5::Xml heif SolTrack PlistCpp spdlog::spdlog Threads::Threads)
