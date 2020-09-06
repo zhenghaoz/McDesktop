@@ -20,7 +20,15 @@ jobs:
       with:
         submodules: 'recursive'
 
+    - name: Cache Qt
+      id: cache-qt
+      uses: actions/cache@v2
+      with:
+        path: ${{ runner.workspace }}/Qt
+        key: ${{ runner.os }}-qt
+
     - name: Install Qt
+      if: steps.cache-qt.outputs.cache-hit != 'true'
       uses: jurplel/install-qt-action@v2
 
     - name: Install Boost
