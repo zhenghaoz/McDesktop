@@ -1,0 +1,48 @@
+
+name: Windows
+
+on:
+  push:
+    branches:    
+      - master
+  pull_request:
+    branches:    
+      - master
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: windows-latest
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+
+    - name: Cache Qt
+      id: cache-qt
+      uses: actions/cache@v2
+      with:
+        path: ${{ runner.workspace }}/Qt
+        key: ${{ runner.os }}-qt
+
+    - name: Install Qt
+      if: steps.cache-qt.outputs.cache-hit != 'true'
+      uses: jurplel/install-qt-action@v2
+
+    - name: Cache Boost
+      id: cache-boost
+      uses: actions/cache@v2
+      with:
+        path: C:/local/boost_1_67_0
+        key: ${{ runner.os }}-boost
+
+    - name: Install Boost
+      if: steps.cache-boost.outputs.cache-hit != 'true'
+      uses: crazy-max/ghaction-chocolatey@v1
+      with:
+        args: install boost-msvc-14.1
+
+    - name: Run CMake
+      uses: ashutoshvarma/action-cmake-build@master
