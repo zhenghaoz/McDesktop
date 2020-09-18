@@ -1,8 +1,10 @@
+// Cache - designed for:
+// 1. Update location by IP.
+// 2. Update wallpaper cache.
 #include "cache.h"
-#include "heic.h"
 #include "exception.h"
-#include <spdlog/spdlog.h>
-#include <iostream>
+#include "heic.h"
+
 #include <QDir>
 #include <QSet>
 #include <QDirIterator>
@@ -12,10 +14,13 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSettings>
-#include <cmath>
+
+#include <httplib.h>
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
-#include <httplib.h>
+#include <cmath>
+#include <iostream>
 
 using namespace std;
 
@@ -28,8 +33,8 @@ QString Checksum(const QString &fileName)
             return hash.result().toHex();
         }
     }
-    throw SunDesktopException(
-                SunDesktopException::OpenFileError,
+    throw Exception(
+                Exception::OpenFileError,
                 "can't open file " + fileName.toStdString());
 }
 
@@ -49,12 +54,12 @@ CachedLocation GetLocationFromIP()
                 return location;
             }
         }
-        throw SunDesktopException(
-                    SunDesktopException::ParseJSONError,
+        throw Exception(
+                    Exception::ParseJSONError,
                     "failed to get location from IP");
     }
-    throw SunDesktopException(
-                SunDesktopException::NetworkError,
+    throw Exception(
+                Exception::NetworkError,
                 "failed to get location from IP");
 }
 
@@ -115,8 +120,8 @@ Cache::Cache()
         spdlog::critical("home directory not found");
         exit(-1);
     }
-    mHomePath = homePaths.front();
-    spdlog::info("find home directory: {}", mHomePath.toStdString());
+    homePath = homePaths.front();
+    spdlog::info("find home directory: {}", homePath.toStdString());
 
     // Create directories if not exist
     const QDir& rootDir = QDir::root();
@@ -124,20 +129,24 @@ Cache::Cache()
     rootDir.mkpath(GetPictureDir());
 
     // Create sync thread
-    mSyncThread = thread(&Cache::SyncPictureCache, this);
-    pictureSyncThread = thread(&Cache::SyncLocationCache, this);
+    pictureSyncThread = thread(&Cache::SyncPictureCache, this);
+    locationSyncThread = thread(&Cache::SyncLocationCache, this);
 }
 
 Cache::~Cache()
 {
-    mIsTerminated = true;
-    mSyncThread.join();
+    isTerminated = true;
+    NotifyLocationSyncer();
+    NotifyPictureSyncer();
     pictureSyncThread.join();
+    locationSyncThread.join();
 }
 
-void Cache::SyncPictureCache() const
+void Cache::SyncPictureCache()
 {
-    while (!mIsTerminated) {
+    while (!isTerminated) {
+        bool changed = false;
+
         // List caches
         const QVector<QString> caches = ListPictureCaches();
         QSet<QString> cacheSet;
@@ -156,28 +165,41 @@ void Cache::SyncPictureCache() const
                 const QString cachePath = GetCacheDir() + "/" + checksum;
                 QDir(cachePath).mkpath(".");
                 heic.Save(cachePath);
+                changed = true;
             } else {
                 cacheSet.remove(checksum);
             }
         }
 
-        spdlog::info("looping");
-        chrono::seconds timespan(10);
-        this_thread::sleep_for(timespan);
+        if (changed && pictureSyncCallback != nullptr) {
+            pictureSyncCallback();
+        }
+
+        // Sleep
+        {
+            chrono::seconds timespan(10);
+            unique_lock<mutex> lk(pictureSyncMutex);
+            pictureSyncCond.wait_for(lk, timespan);
+        }
     }
     spdlog::info("picture cache sync thread exit");
 }
 
-void Cache::SyncLocationCache() const
+void Cache::SyncLocationCache()
 {
-    while (!mIsTerminated) {
+    while (!isTerminated) {
         CachedLocation location = GetLocationFromIP();
         spdlog::info("get location from IP, lon = {}, lat = {}", location.longitude, location.latitude);
         QSettings settings;
         settings.setValue("longitude", location.longitude);
         settings.setValue("latitude", location.latitude);
-        chrono::hours timespan(kLocationCacheLease);
-        this_thread::sleep_for(timespan);
+
+        // Sleep
+        {
+            chrono::hours timespan(kLocationCacheLease);
+            unique_lock<mutex> lk(locationSyncMutex);
+            locationSyncCond.wait_for(lk, timespan);
+        }
     }
     spdlog::info("location cache sync thread exit");
 }
@@ -196,12 +218,12 @@ QVector<QString> Cache::ListPictureCaches() const
 
 QString Cache::GetCacheDir() const
 {
-    return mHomePath + "/ddesktop/cache";
+    return homePath + "/ddesktop/cache";
 }
 
 QString Cache::GetPictureDir() const
 {
-    return mHomePath + "/ddesktop/pictures";
+    return homePath + "/ddesktop/pictures";
 }
 
 QVector<CachedPicture> Cache::ListCachedPictures() const
@@ -213,13 +235,13 @@ QVector<CachedPicture> Cache::ListCachedPictures() const
         CachedPicture picture;
 
         // Load cover
-        picture.cover = QPixmap(path + "/cover.png");
+        picture.cover = QPixmap(path + "/cover.jpg");
 
         // Load config
         QFile configFile(path + "/config.json");
         if (!configFile.open(QFile::ReadOnly)) {
-            throw SunDesktopException(
-                        SunDesktopException::OpenFileError,
+            throw Exception(
+                        Exception::OpenFileError,
                         "can't open file " + (path + "/config.json").toStdString());
         }
         const QJsonDocument& configDoc = QJsonDocument::fromJson(configFile.readAll());
@@ -238,8 +260,8 @@ QVector<CachedPicture> Cache::ListCachedPictures() const
             int index = frameObject.value("i").toInt();
             frame.azimuth = frameObject.value("z").toDouble();
             frame.altitude = frameObject.value("a").toDouble();
-            frame.path = path + QString::number(index) + ".png";
-            frame.thumb = QPixmap(path + "/thumb_" + QString::number(index) + ".png");
+            frame.path = path + '/' + QString::number(index) + ".jpg";
+            frame.thumb = QPixmap(path + "/thumb_" + QString::number(index) + ".jpg");
             if (l == index) picture.lightFrame = frame;
             if (d == index) picture.darkFrame = frame;
             picture.frames.push_back(frame);
@@ -257,4 +279,31 @@ CachedLocation Cache::GetCachedLocation() const
     location.latitude = settings.value("latitude", 28.14).toDouble();
     spdlog::info("get cached location, lon = {}, lat = {}", location.longitude, location.latitude);
     return location;
+}
+
+void Cache::NotifyLocationSyncer()
+{
+    locationSyncCond.notify_all();
+}
+
+void Cache::NotifyPictureSyncer()
+{
+    pictureSyncCond.notify_all();
+}
+
+void Cache::NotifyPictureSyncer(std::function<void(void)> action)
+{
+    this->pictureSyncCallback = action;
+    NotifyPictureSyncer();
+}
+
+void Cache::SetWallpaper(const QString& name)
+{
+    QSettings settings;
+    settings.setValue("wallpaper", name);
+}
+
+CachedPicture Cache::GetCurrentDesktop() const
+{
+    return ListCachedPictures().front();
 }

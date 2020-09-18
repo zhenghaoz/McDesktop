@@ -3,19 +3,21 @@
 
 #include <string>
 
-class SunDesktopException
+class Exception
 {
 public:
-    SunDesktopException();
-    SunDesktopException(int errorCode, const std::string& message) {}
+    Exception();
+    Exception(int errorCode, const std::string& message) {}
 
     enum {
         ParseConfigurationError,
         ParseHEICError,
         OpenFileError,
         NetworkError,
-        ParseJSONError
+        ParseJSONError,
+        WallpaperNotSetError,
     };
+
 };
 
 #endif // EXCEPTION_H

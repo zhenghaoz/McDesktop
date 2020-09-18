@@ -1,3 +1,4 @@
+// HEIC Reader - fetch data from HEIC file.
 #ifndef WALLPAPER_H
 #define WALLPAPER_H
 

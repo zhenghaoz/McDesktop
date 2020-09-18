@@ -1,3 +1,18 @@
+// XML Parser - convert XML to JSON.
+// Example:
+// (XML)
+//   <plist>
+//     <array>
+//       <dict>
+//         <key>real</key>
+//         <real>1.0</real>
+//         <key>integer</key>
+//         <integer>1</integer>
+//       </dict>
+//     </array>
+//   </plist>
+// (JSON)
+// [{"real":1.0, "integer":1}]
 #ifndef PARSER_H
 #define PARSER_H
 
@@ -6,9 +21,6 @@
 #include <QJsonDocument>
 #include <QJsonValue>
 
-QJsonValue ParseDict(const QDomElement& element);
-QJsonValue ParseArray(const QDomElement& element);
-QJsonValue ParsePlist(const QDomElement& element);
 QJsonDocument ParsePlist(const QDomDocument& doc);
 
 #endif // PARSER_H

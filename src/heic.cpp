@@ -1,6 +1,6 @@
-#include "heic.h"
-
+// HEIC Reader - fetch data from HEIC file.
 #include "exception.h"
+#include "heic.h"
 #include "parser.h"
 
 #include <QByteArray>
@@ -53,8 +53,8 @@ Heic Heic::Load(const QString& path)
                 && handle.get_metadata_content_type(metaIds.front()) == "application/rdf+xml") {
 
             if (!heic.config.empty()) {
-                throw SunDesktopException(
-                            SunDesktopException::ParseHEICError,
+                throw Exception(
+                            Exception::ParseHEICError,
                             "duplicate metadata");
             }
 
@@ -83,6 +83,8 @@ Heic Heic::Load(const QString& path)
 
 void Heic::Save(const QString &path) const
 {
+    spdlog::info("save cache of {} to {}", name, path.toStdString());
+
     // Parse config
     QDomDocument dom;
     dom.setContent(QString::fromStdString(config));
@@ -93,7 +95,9 @@ void Heic::Save(const QString &path) const
 
     // Save name
     const QFileInfo& heicFile(QString::fromStdString(name));
-    const QString& name = heicFile.fileName().split(".").at(0);
+    const QStringList& nameAndExt = heicFile.fileName().split(".");
+    const QString& name = nameAndExt.at(0);
+    spdlog::info("\tname: {}", name.toStdString());
     QJsonObject object = json.object();
     object.insert("name", name);
     json.setObject(object);
@@ -105,12 +109,13 @@ void Heic::Save(const QString &path) const
     configFile.close();
 
     QImage darkFrame, lightFrame;
+    spdlog::info("\timages: {}", images.size());
     for (size_t i = 0; i < images.size(); i++) {
         const QImage& image = images[i];
-        const QString& fileName = path + "/" + QString::number(i) + ".png";
+        const QString& fileName = path + "/" + QString::number(i) + ".jpg";
         image.save(fileName);
         // Generate thumbnails
-        const QString& thumbName = path + "/thumb_" + QString::number(i) + ".png";
+        const QString& thumbName = path + "/thumb_" + QString::number(i) + ".jpg";
         const QImage& thumb = image.scaled(kThumbWidth, kThumbHeight, Qt::KeepAspectRatio);
         thumb.save(thumbName);
         if (i == darkFrameId) {
@@ -122,13 +127,15 @@ void Heic::Save(const QString &path) const
     }
 
     // Generate cover
-    const QString& coverName = path + "/cover.png";
-    QPixmap coverPixmap(kThumbWidth, kThumbHeight);
+    const auto thumbWidth = darkFrame.width();
+    const auto thumbHeight = lightFrame.height();
+    const QString& coverName = path + "/cover.jpg";
+    QPixmap coverPixmap(thumbWidth, thumbHeight);
     QPainter painter(&coverPixmap);
-    QRegion r1(QRect(0, 0, kThumbWidth/2, kThumbHeight));
+    QRegion r1(QRect(0, 0, thumbWidth/2, thumbHeight));
     painter.setClipRegion(r1);
     painter.drawImage(0, 0, lightFrame);
-    QRegion r2(QRect(kThumbWidth/2, 0, kThumbWidth, kThumbHeight));
+    QRegion r2(QRect(thumbWidth/2, 0, thumbWidth, thumbHeight));
     painter.setClipRegion(r2);
     painter.drawImage(0, 0, darkFrame);
     coverPixmap.save(coverName);

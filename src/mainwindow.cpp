@@ -8,6 +8,8 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QTimer>
+#include <QCloseEvent>
+#include <QSettings>
 #include <chrono>
 #include <spdlog/spdlog.h>
 #include "heic.h"
@@ -94,6 +96,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::LoadGallery()
 {
+    const Cache& cache = Cache::getInstance();
     pictures = cache.ListCachedPictures();
     for(const CachedPicture picture : pictures) {
         QListWidgetItem *item = new QListWidgetItem();
@@ -117,11 +120,19 @@ void MainWindow::OpenGitHub()
 void MainWindow::AddWallpaper()
 {
     QString file1Name = QFileDialog::getOpenFileName(this, tr("Open XML File 1"), "/home", tr("XML Files (*.xml)"));
+    spdlog::info("add new wallpaper {}", file1Name.toStdString());
+    Cache& cache = Cache::getInstance();
+    cache.NotifyPictureSyncer([this](){
+        LoadGallery();
+    });
 }
 
 void MainWindow::RemoveWallpaper()
 {
-
+    Cache& cache = Cache::getInstance();
+    cache.NotifyPictureSyncer([this](){
+        LoadGallery();
+    });
 }
 
 void MainWindow::SelectPicture(QListWidgetItem* item)
@@ -145,8 +156,13 @@ void MainWindow::SelectPicture(QListWidgetItem* item)
     time.hour = play;
     time.minute = local_tm.tm_min;
     time.second = local_tm.tm_sec;
+    const Cache& cache = Cache::getInstance();
     const CachedFrame& frame = pictures[selected].GetFrame(cache.GetCachedLocation(), time);
     imageLabel->setPixmap(frame.thumb.scaled(200, 200, Qt::KeepAspectRatio));
+
+    // Set settings
+    QSettings settings;
+    settings.setValue("wallpaper", pictures[selected].name);
 }
 
 void MainWindow::PlayPreview()
@@ -164,7 +180,14 @@ void MainWindow::PlayPreview()
         time.hour = play;
         time.minute = local_tm.tm_min;
         time.second = local_tm.tm_sec;
+        const Cache& cache = Cache::getInstance();
         const CachedFrame& frame = pictures[selected].GetFrame(cache.GetCachedLocation(), time);
-        imageLabel->setPixmap(frame.thumb.scaled(200, 200, Qt::KeepAspectRatio));
+        imageLabel->setPixmap(frame.thumb.scaled(200, 200, Qt::KeepAspectRatioByExpanding));
     }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    hide();
+    event->ignore();
 }

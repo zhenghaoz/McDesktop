@@ -19,7 +19,6 @@ class MainWindow : public QWidget
 
     QStringList wallpapers;
 
-    Cache cache;
     QVector<CachedPicture> pictures;
     int selected = -1;
     int play = 0;
@@ -35,5 +34,6 @@ public:
     void OpenGitHub();
     void SelectPicture(QListWidgetItem* item);
     void PlayPreview();
+    void closeEvent(QCloseEvent *event) override;
 };
 #endif // MAINWINDOW_H

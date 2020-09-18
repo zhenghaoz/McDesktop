@@ -1,6 +1,6 @@
 #include "exception.h"
 
-SunDesktopException::SunDesktopException()
+Exception::Exception()
 {
 
 }

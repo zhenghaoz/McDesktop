@@ -54,6 +54,10 @@ add_executable(sundesktop
   src/exception.h
   src/parser.cpp
   src/parser.h
+  src/daemon.cpp
+  src/daemon.h
+  src/desktop.cpp
+  src/desktop.h
 )
 
 target_include_directories(sundesktop PRIVATE src/PlistCpp/src)
