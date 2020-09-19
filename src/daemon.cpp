@@ -1,10 +1,10 @@
 #include "daemon.h"
+#include "exception.h"
 #include "desktop.h"
 #include "cache.h"
 
 #include <QApplication>
 #include <QMenu>
-#include <QSystemTrayIcon>
 #include <QtDebug>
 #include <QTimer>
 
@@ -27,7 +27,7 @@ Daemon::Daemon()
 
     // Create system tray
     QPixmap pixmap("../assets/icon.png");
-    QSystemTrayIcon *trayIcon = new QSystemTrayIcon(QIcon(pixmap));
+    trayIcon = new QSystemTrayIcon(QIcon(pixmap));
     trayIcon->setContextMenu(menu);
     trayIcon->setVisible(true);
 
@@ -35,16 +35,26 @@ Daemon::Daemon()
     DesktopKeeper();
     QTimer *keeperTimer = new QTimer(this);
     connect(keeperTimer, &QTimer::timeout, this, &Daemon::DesktopKeeper);
-    keeperTimer->start(1000*60);
+    keeperTimer->start(1000*60*10);
+
+    // Register callback
+    Cache& cache = Cache::getInstance();
+    cache.ListenOnDesktopChange([this](){ DesktopKeeper(); });
 }
 
 void Daemon::DesktopKeeper()
 {
-    const Cache& cache = Cache::getInstance();
-    const CachedPicture& picture = cache.GetCurrentDesktop();
-    const CachedFrame& frame = picture.GetFrame(cache.GetCachedLocation());
-    spdlog::info("set wallpaper {}", frame.path.toStdString());
-    setDesktopTask = async(launch::async, [=](){
-        SetDesktop(frame.path);
-    });
+    Cache& cache = Cache::getInstance();
+    try {
+        const optional<CachedPicture>& picture = cache.GetCurrentDesktop();
+        if (picture.has_value()) {
+            const CachedFrame& frame = picture.value().GetFrame(cache.GetCachedLocation());
+            spdlog::info("set wallpaper {}", frame.path.toStdString());
+            setDesktopTask = async(launch::async, [=](){
+                SetDesktop(frame.path);
+            });
+        }
+    } catch (const Exception& e) {
+        trayIcon->showMessage("Exception", QString::fromStdString(e.what()), QSystemTrayIcon::Critical);
+    }
 }

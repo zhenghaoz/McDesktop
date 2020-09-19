@@ -7,7 +7,10 @@ class Exception
 {
 public:
     Exception();
-    Exception(int errorCode, const std::string& message) {}
+    Exception(int errorCode, const std::string& message): message(message) {}
+    std::string what() const { return message; }
+
+    std::string message;
 
     enum {
         ParseConfigurationError,
@@ -15,7 +18,7 @@ public:
         OpenFileError,
         NetworkError,
         ParseJSONError,
-        WallpaperNotSetError,
+        PictureNotExistsError,
     };
 
 };

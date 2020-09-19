@@ -137,7 +137,7 @@ Cache::~Cache()
 {
     isTerminated = true;
     NotifyLocationSyncer();
-    NotifyPictureSyncer();
+    NotifyCacheSyncer();
     pictureSyncThread.join();
     locationSyncThread.join();
 }
@@ -148,7 +148,7 @@ void Cache::SyncPictureCache()
         bool changed = false;
 
         // List caches
-        const QVector<QString> caches = ListPictureCaches();
+        const QVector<QString> caches = ListCaches();
         QSet<QString> cacheSet;
         for (const QString& cache : caches) {
             cacheSet.insert(cache);
@@ -168,6 +168,18 @@ void Cache::SyncPictureCache()
                 changed = true;
             } else {
                 cacheSet.remove(checksum);
+            }
+        }
+
+        // Remove orphan
+        for (const QString& cache : cacheSet) {
+            spdlog::info("orphan {}", cache.toStdString());
+            QDir dir(GetCacheDir() + "/" + cache);
+            if (dir.removeRecursively()) {
+                spdlog::info("remove orphan sucess");
+                changed = true;
+            } else {
+                spdlog::info("remove orphan failed");
             }
         }
 
@@ -210,7 +222,7 @@ QVector<QString> Cache::ListPictures() const
     return pictureDir.entryList(QStringList() << "*.heic" << "*.HEIC", QDir::Files).toVector();
 }
 
-QVector<QString> Cache::ListPictureCaches() const
+QVector<QString> Cache::ListCaches() const
 {
     const QDir& pictureDir(GetCacheDir());
     return pictureDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot).toVector();
@@ -226,10 +238,11 @@ QString Cache::GetPictureDir() const
     return homePath + "/ddesktop/pictures";
 }
 
-QVector<CachedPicture> Cache::ListCachedPictures() const
+// Get latest pictures from cache.
+QVector<CachedPicture> Cache::GetCachedPictures() const
 {
     QVector<CachedPicture> pictures;
-    const QVector<QString>& caches = ListPictureCaches();
+    const QVector<QString>& caches = ListCaches();
     for (const QString& cache : caches) {
         const QString& path = GetCacheDir() + "/" + cache;
         CachedPicture picture;
@@ -271,6 +284,7 @@ QVector<CachedPicture> Cache::ListCachedPictures() const
     return pictures;
 }
 
+// Get latest location from cache.
 CachedLocation Cache::GetCachedLocation() const
 {
     QSettings settings;
@@ -281,29 +295,70 @@ CachedLocation Cache::GetCachedLocation() const
     return location;
 }
 
+// Notify location cache syncer to wake up.
 void Cache::NotifyLocationSyncer()
 {
     locationSyncCond.notify_all();
 }
 
-void Cache::NotifyPictureSyncer()
+// Notify picture cache syncer to wake up.
+void Cache::NotifyCacheSyncer()
 {
     pictureSyncCond.notify_all();
 }
 
-void Cache::NotifyPictureSyncer(std::function<void(void)> action)
+// Set current desktop
+void Cache::SetCurrentDesktop(const QString& name)
 {
-    this->pictureSyncCallback = action;
-    NotifyPictureSyncer();
-}
-
-void Cache::SetWallpaper(const QString& name)
-{
+    spdlog::info("set current desktop {}", name.toStdString());
+    // Validate
+    const auto& pictures = GetCachedPictures();
+    if (!any_of(pictures.begin(), pictures.end(), [&](const CachedPicture& picture){ return picture.name == name; })) {
+        throw Exception(Exception::PictureNotExistsError, "picture not exists");
+    }
+    // Save
     QSettings settings;
     settings.setValue("wallpaper", name);
+    // Notify
+    {
+        lock_guard<mutex> lock(desktopChangeCallbackMtx);
+        if (desktopChangeCallback) {
+            desktopChangeCallback();
+        }
+    }
 }
 
-CachedPicture Cache::GetCurrentDesktop() const
+// Get current desktop
+std::optional<CachedPicture> Cache::GetCurrentDesktop() const
 {
-    return ListCachedPictures().front();
+    spdlog::info("get current desktop");
+    // Load
+    QSettings settings;
+    const auto& name = settings.value("wallpaper", "").toString();
+    if (name.isEmpty()) {
+        return nullopt;
+    }
+    // Fetch
+    const auto& pictures = GetCachedPictures();
+    for (const auto& picture : pictures) {
+        if (picture.name == name) {
+            spdlog::info("{} {}", name.toStdString(), picture.name.toStdString());
+            return picture;
+        }
+    }
+    throw Exception(Exception::PictureNotExistsError, "picture " + name.toStdString() + " not exists");
+}
+
+
+// Notify picture cache syncer to wake up and call pictureSyncCallback if something happened.
+void Cache::ListenOnCacheChange(std::function<void(void)> action)
+{
+    lock_guard<mutex> lock(callbackMutex);
+    this->pictureSyncCallback = action;
+}
+
+void Cache::ListenOnDesktopChange(std::function<void(void)> desktopChangeCallback)
+{
+    lock_guard<mutex> lock(desktopChangeCallbackMtx);
+    this->desktopChangeCallback = desktopChangeCallback;
 }

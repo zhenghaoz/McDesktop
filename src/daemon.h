@@ -4,12 +4,14 @@
 #include "mainwindow.h"
 
 #include <QObject>
+#include <QSystemTrayIcon>
 
 #include <future>
 
 class Daemon : public QObject
 {
     MainWindow mainWindow;
+    QSystemTrayIcon *trayIcon;
     std::future<void> setDesktopTask;
 public:
     Daemon();

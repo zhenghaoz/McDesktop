@@ -22,6 +22,34 @@ using namespace std;
 using namespace heif;
 using namespace Plist;
 
+QImage Crop(const QImage& image, int width, int height)
+{
+    // Step 1: Scale image
+    double ratio = static_cast<double>(height) / width;
+    double imgRatio = static_cast<double>(image.height()) / image.width();
+    int scaleHeight = height;
+    int scaleWidth = width;
+    if (imgRatio < ratio) {
+        // +-+------+-+
+        // | |      | |
+        // +-+------+-+
+        scaleWidth = scaleHeight / imgRatio;
+    } else if (imgRatio > ratio) {
+        // +------+
+        // +------+
+        // |      |
+        // +------+
+        // +------+
+        scaleHeight = scaleWidth * imgRatio;
+    }
+    const QImage& scaledImage = image.scaled(scaleWidth, scaleHeight, Qt::KeepAspectRatio);
+    // Step 2: Crop image
+    int left = (static_cast<double>(scaleWidth) - width) / 2;
+    int top = (static_cast<double>(scaleHeight) - height) / 2;
+    QRect rect(left, top, width, height);
+    return scaledImage.copy(rect);
+}
+
 Heic Heic::Load(const QString& path)
 {
     Heic heic;
@@ -116,7 +144,7 @@ void Heic::Save(const QString &path) const
         image.save(fileName);
         // Generate thumbnails
         const QString& thumbName = path + "/thumb_" + QString::number(i) + ".jpg";
-        const QImage& thumb = image.scaled(kThumbWidth, kThumbHeight, Qt::KeepAspectRatio);
+        const QImage& thumb = Crop(image, kThumbWidth, kThumbHeight);
         thumb.save(thumbName);
         if (i == darkFrameId) {
             darkFrame = thumb.copy();
@@ -135,7 +163,7 @@ void Heic::Save(const QString &path) const
     QRegion r1(QRect(0, 0, thumbWidth/2, thumbHeight));
     painter.setClipRegion(r1);
     painter.drawImage(0, 0, lightFrame);
-    QRegion r2(QRect(thumbWidth/2, 0, thumbWidth, thumbHeight));
+    QRegion r2(QRect(thumbWidth/2, 0, thumbWidth/2, thumbHeight));
     painter.setClipRegion(r2);
     painter.drawImage(0, 0, darkFrame);
     coverPixmap.save(coverName);

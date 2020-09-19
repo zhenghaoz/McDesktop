@@ -22,6 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Main window properties
     setFixedSize(QSize(800, 600));
     setWindowTitle("SunDesktop");
+    setWindowIcon(QIcon(QPixmap("../assets/icon.png")));
 
     // Create base layout
     QVBoxLayout *baseLayout = new QVBoxLayout();
@@ -55,8 +56,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Gallery
     galleryList = new QListWidget();
     galleryList->setViewMode(QListWidget::IconMode);
-    galleryList->setIconSize(QSize(180, 180));
-    galleryList->setSpacing(2);
+    galleryList->setIconSize(QSize(178, 178));
+    galleryList->setSpacing(3);
     galleryList->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     connect(galleryList, &QListWidget::itemClicked, this, &MainWindow::SelectPicture);
     baseLayout->addWidget(galleryList);
@@ -86,6 +87,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(previewTimer, &QTimer::timeout, this, &MainWindow::PlayPreview);
     previewTimer->start(1000);
 
+    // Register callback
+    Cache& cache = Cache::getInstance();
+    cache.ListenOnCacheChange([this](){
+        LoadGallery();
+    });
+
     MoveCenter();
     LoadGallery();
 }
@@ -96,8 +103,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::LoadGallery()
 {
-    const Cache& cache = Cache::getInstance();
-    pictures = cache.ListCachedPictures();
+    Cache& cache = Cache::getInstance();
+    pictures = cache.GetCachedPictures();
+    galleryList->clear();
     for(const CachedPicture picture : pictures) {
         QListWidgetItem *item = new QListWidgetItem();
         item->setIcon(QIcon(picture.cover));
@@ -119,20 +127,45 @@ void MainWindow::OpenGitHub()
 
 void MainWindow::AddWallpaper()
 {
-    QString file1Name = QFileDialog::getOpenFileName(this, tr("Open XML File 1"), "/home", tr("XML Files (*.xml)"));
-    spdlog::info("add new wallpaper {}", file1Name.toStdString());
     Cache& cache = Cache::getInstance();
-    cache.NotifyPictureSyncer([this](){
-        LoadGallery();
-    });
+    // Load default directory
+    QSettings settings;
+    const QString& dir = settings.value("dir", cache.GetHomeDir()).toString();
+    // Open file dialog
+    QString file1Name = QFileDialog::getOpenFileName(this, tr("Open HEIC File"), dir, tr("HEIC Files (*.heic)"));
+    if (!file1Name.isEmpty()) {
+        spdlog::info("add new wallpaper {}", file1Name.toStdString());
+        // Save default directory
+        QFileInfo fileInfo(file1Name);
+        settings.setValue("dir", fileInfo.dir().path());
+        // Copy
+        const QString& dest = cache.GetPictureDir() + "/" + fileInfo.fileName();
+        if (QFile::copy(file1Name, dest)) {
+            spdlog::info("add new wallpaper success");
+            // Refresh gallery
+            QListWidgetItem *item = new QListWidgetItem();
+            item->setIcon(QIcon(QPixmap("../assets/loading.jpg").scaled(Heic::kThumbWidth, Heic::kThumbHeight)));
+            galleryList->addItem(item);
+            cache.NotifyCacheSyncer();
+        } else {
+            spdlog::info("add new wallpaper failed");
+        }
+    }
 }
 
 void MainWindow::RemoveWallpaper()
 {
     Cache& cache = Cache::getInstance();
-    cache.NotifyPictureSyncer([this](){
-        LoadGallery();
-    });
+    const QString& dest = cache.GetPictureDir() + "/" + pictures[selected].name + ".heic";
+    if (QFile::remove(dest)) {
+        spdlog::info("remove wallpaper succed");
+        selected = -1;
+        QListWidgetItem* item = galleryList->item(selected);
+        item->setIcon(QIcon(QPixmap("../assets/loading.jpg").scaled(Heic::kThumbWidth, Heic::kThumbHeight)));
+        cache.NotifyCacheSyncer();
+    } else {
+        spdlog::info("remove wallpaper failed");
+    }
 }
 
 void MainWindow::SelectPicture(QListWidgetItem* item)
@@ -156,13 +189,12 @@ void MainWindow::SelectPicture(QListWidgetItem* item)
     time.hour = play;
     time.minute = local_tm.tm_min;
     time.second = local_tm.tm_sec;
-    const Cache& cache = Cache::getInstance();
+    Cache& cache = Cache::getInstance();
     const CachedFrame& frame = pictures[selected].GetFrame(cache.GetCachedLocation(), time);
     imageLabel->setPixmap(frame.thumb.scaled(200, 200, Qt::KeepAspectRatio));
 
     // Set settings
-    QSettings settings;
-    settings.setValue("wallpaper", pictures[selected].name);
+    cache.SetCurrentDesktop(pictures[selected].name);
 }
 
 void MainWindow::PlayPreview()
@@ -182,7 +214,7 @@ void MainWindow::PlayPreview()
         time.second = local_tm.tm_sec;
         const Cache& cache = Cache::getInstance();
         const CachedFrame& frame = pictures[selected].GetFrame(cache.GetCachedLocation(), time);
-        imageLabel->setPixmap(frame.thumb.scaled(200, 200, Qt::KeepAspectRatioByExpanding));
+        imageLabel->setPixmap(frame.thumb.scaled(200, 200, Qt::KeepAspectRatio));
     }
 }
 

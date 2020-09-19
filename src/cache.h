@@ -11,10 +11,12 @@
 
 #include <SolTrack.h>
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <optional>
 
 struct CachedLocation
 {
@@ -49,10 +51,20 @@ class Cache
     static constexpr int kPictureCacheLease = 5;
 
     QString homePath;
-    QVector<CachedPicture> pictures;
+
     std::function<void(void)> pictureSyncCallback;
 
-    bool isTerminated = false;
+    std::atomic<bool> isTerminated = false;
+
+    std::function<void(void)> desktopChangeCallback;
+    std::mutex desktopChangeCallbackMtx;
+
+    // Cached pictures
+    std::atomic<int> writeVersion = 1;
+    std::atomic<int> readVersion = 0;
+    std::mutex pictureMutex;
+
+    std::mutex callbackMutex;
     std::mutex pictureSyncMutex;
     std::mutex locationSyncMutex;
     std::condition_variable pictureSyncCond;
@@ -61,9 +73,9 @@ class Cache
     std::thread locationSyncThread;
 
     QString GetCacheDir() const;
-    QString GetPictureDir() const;
+
     QVector<QString> ListPictures() const;
-    QVector<QString> ListPictureCaches() const;
+    QVector<QString> ListCaches() const;
     void SyncPictureCache();
     void SyncLocationCache();
 
@@ -74,19 +86,41 @@ class Cache
 
 public:
 
-    static Cache& getInstance(){
-      static Cache instance;
-      // volatile int dummy{};
-      return instance;
+    static Cache& getInstance()
+    {
+        // TODO: Is it thread-safe?
+        static Cache instance;
+        return instance;
     }
 
-    QVector<CachedPicture> ListCachedPictures() const;
+    QString GetHomeDir() const
+    {
+        return homePath;
+    }
+
+        QString GetPictureDir() const;
+
+    // Get latest pictures from cache.
+    QVector<CachedPicture> GetCachedPictures() const;
+
+    // Get latest location from cache.
     CachedLocation GetCachedLocation() const;
-    void SetWallpaper(const QString& name);
-    CachedPicture GetCurrentDesktop() const;
+
+    // Set current desktop
+    void SetCurrentDesktop(const QString& name);
+
+    // Get current desktop
+    std::optional<CachedPicture> GetCurrentDesktop() const;
+
+    // Notify location cache syncer to wake up.
     void NotifyLocationSyncer();
-    void NotifyPictureSyncer();
-    void NotifyPictureSyncer(std::function<void(void)> pictureSyncCallback);
+
+    // Notify picture cache syncer to wake up.
+    void NotifyCacheSyncer();
+
+    void ListenOnCacheChange(std::function<void(void)> cacheChangeCallback);
+
+    void ListenOnDesktopChange(std::function<void(void)> pictureChangeCallback);
 
 };
 
